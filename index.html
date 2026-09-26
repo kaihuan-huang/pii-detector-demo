@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PII Detector Demo · Kaihuan Huang</title>
+<meta name="description" content="Find card numbers, emails, phone numbers and API keys in text, and see the masked version a language model would receive.">
+<style>
+:root{
+  --bg:#FFFFFF;--ink:#16191A;--ink-2:#3D4447;--muted:#5F686B;--line:#DFE3E5;--panel:#F4F6F7;
+  --accent:#0B5CAD;--mark:#FDE68A;--mark-ink:#16191A;--ph:#DCEBFA;--ph-ink:#0B3F75;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#101315;--ink:#E6EAEC;--ink-2:#C2CACD;--muted:#98A2A6;--line:#2A3134;--panel:#181D1F;
+  --accent:#6CB2F5;--mark:#5E5217;--mark-ink:#FBF1C2;--ph:#16304A;--ph-ink:#B9DAFB;
+}}
+:root[data-theme="dark"]{
+  --bg:#101315;--ink:#E6EAEC;--ink-2:#C2CACD;--muted:#98A2A6;--line:#2A3134;--panel:#181D1F;
+  --accent:#6CB2F5;--mark:#5E5217;--mark-ink:#FBF1C2;--ph:#16304A;--ph-ink:#B9DAFB;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.6;padding:48px 16px 64px}
+main{max-width:860px;margin:0 auto}
+h1{font-size:clamp(1.7rem,4vw,2.2rem);line-height:1.2;margin:0;letter-spacing:-.01em}
+h2{font-size:1.15rem;margin:48px 0 12px}
+p{margin:0 0 14px}
+a{color:var(--accent);text-underline-offset:2px}
+.dek{font-size:1.1rem;color:var(--ink-2);margin-top:12px}
+.meta{font-size:.85rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:14px}
+.badge{display:inline-block;font-size:.8rem;border:1px solid var(--line);border-radius:999px;padding:2px 10px;color:var(--ink-2)}
+label{display:block;font-size:.85rem;color:var(--ink-2);margin-bottom:6px}
+textarea{width:100%;min-height:120px;font:inherit;font-size:.95rem;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px;resize:vertical}
+textarea:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px}
+@media (max-width:680px){.grid{grid-template-columns:minmax(0,1fr)}}
+.pane{border:1px solid var(--line);border-radius:8px;padding:12px;min-width:0}
+.pane h3{font-size:.8rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+.out{white-space:pre-wrap;word-break:break-word;font-size:.95rem;line-height:1.9}
+mark{background:var(--mark);color:var(--mark-ink);border-radius:3px;padding:1px 2px}
+mark sup{font-family:var(--mono);font-size:.62rem;margin-left:3px;opacity:.75}
+.ph{font-family:var(--mono);font-size:.85em;background:var(--ph);color:var(--ph-ink);border-radius:3px;padding:1px 4px}
+.count{font-size:.85rem;color:var(--muted);margin-top:10px}
+.actions{margin-top:10px}
+button{font:inherit;font-size:.85rem;background:transparent;color:var(--ink-2);border:1px solid var(--line);border-radius:6px;padding:5px 12px;cursor:pointer}
+video{display:block;width:100%;height:auto;aspect-ratio:1280/760;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+figure{margin:0}
+figcaption{font-size:.85rem;color:var(--muted);margin-top:8px}
+footer{margin-top:56px;padding-top:16px;border-top:1px solid var(--line);font-size:.85rem;color:var(--muted)}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>PII Detector Demo</h1>
+    <p class="dek">Card numbers, emails, phone numbers and API keys are found before text leaves the device. The language model only ever sees placeholders.</p>
+    <div class="meta">
+      <span>Kaihuan Huang</span>
+      <span class="badge">Independent reimplementation · all data is synthetic</span>
+    </div>
+  </header>
+
+  <section aria-labelledby="try">
+    <h2 id="try">Try it</h2>
+    <label for="src">Paste or edit text (sample uses test card numbers and example.com)</label>
+    <textarea id="src" spellcheck="false"></textarea>
+    <div class="actions"><button type="button" id="reset">Reset sample</button></div>
+    <div class="grid">
+      <div class="pane">
+        <h3>Detected</h3>
+        <div class="out" id="found" aria-live="polite"></div>
+      </div>
+      <div class="pane">
+        <h3>What the model receives</h3>
+        <div class="out" id="masked" aria-live="polite"></div>
+      </div>
+    </div>
+    <p class="count" id="count"></p>
+    <p class="count">Card numbers must pass a Luhn check, so order and reference numbers are left alone. Repeated values keep the same placeholder, so the model can still reason about them. This page runs a browser copy of the rules layer; the full service adds a model for names and addresses.</p>
+  </section>
+
+  <section aria-labelledby="walk">
+    <h2 id="walk">Admin walkthrough</h2>
+    <figure>
+      <video src="media/walkthrough.webm" poster="media/01-incidents.jpg" controls muted playsinline preload="metadata" aria-label="Screen recording of the admin app"></video>
+      <figcaption>Synthetic data. Acknowledge a card-number incident, preview exactly who an enforcement change will block before confirming it, then view credentials, which are write-only and show only their last four characters.</figcaption>
+    </figure>
+  </section>
+
+  <footer>
+    <a href="https://github.com/kaihuan-huang">GitHub</a> · <a href="https://linkedin.com/in/kaihuanhuang/">LinkedIn</a>
+  </footer>
+</main>
+
+<script src="detect.js"></script>
+<script>
+(() => {
+  "use strict";
+  const SAMPLE = [
+    "Please refund the customer on card 4111 1111 1111 1111 and email the receipt to jordan.lee@example.com.",
+    "If the refund fails, call +1 415 555 0132 or (415) 555-0199. Backup card: 5555 5555 5555 4444.",
+    "Order ref 1234 5678 9012 3456 is not a card. Resend the receipt to jordan.lee@example.com.",
+    "Staging key for the payments API: sk-demo-4f9a2c7e1b8d3a6f5e0c9b2d"
+  ].join("\n");
+  const src = document.getElementById("src");
+  const esc = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  function render() {
+    const text = src.value;
+    const spans = PiiDemo.detect(text);
+    let found = "", cursor = 0;
+    for (const s of spans) {
+      found += esc(text.slice(cursor, s.start)) + `<mark>${esc(text.slice(s.start, s.end))}<sup>${PiiDemo.LABELS[s.cat]}</sup></mark>`;
+      cursor = s.end;
+    }
+    document.getElementById("found").innerHTML = found + esc(text.slice(cursor));
+    document.getElementById("masked").innerHTML = esc(PiiDemo.mask(text, spans)).replace(/\[[A-Za-z ]+ \d+\]/g, (p) => `<span class="ph">${p}</span>`);
+    document.getElementById("count").textContent = `${spans.length} value${spans.length === 1 ? "" : "s"} found.`;
+  }
+
+  src.value = SAMPLE;
+  src.addEventListener("input", render);
+  document.getElementById("reset").addEventListener("click", () => { src.value = SAMPLE; render(); });
+  render();
+})();
+</script>
+</body>
+</html>
