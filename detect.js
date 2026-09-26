@@ -1,7 +1,11 @@
 (function (root) {
   "use strict";
 
-  const LABELS = { payment_card: "Card", email: "Email", phone: "Phone", secret: "API key" };
+  const LABELS = {
+    payment_card: "Card", email: "Email", phone: "Phone", secret: "API key",
+    private_person: "Name", private_address: "Address", private_date: "Date", private_url: "URL",
+    private_email: "Email", private_phone: "Phone", account_number: "Account",
+  };
 
   function luhn(digits) {
     let sum = 0;
@@ -26,19 +30,27 @@
     ["secret", new RegExp(`${L}(?:sk|ghp|AKIA)[-_A-Za-z0-9]{16,}`, "g")],
   ];
 
-  function detect(text) {
+  // Priority on overlap: check-digit-verified rules, then other rules, then model spans.
+  function resolve(spans) {
+    const rank = (s) => (s.verified ? 2 : s.source === "rule" ? 1 : 0);
+    const sorted = [...spans].sort((a, b) => (rank(b) - rank(a)) || (a.start - b.start));
+    const kept = [];
+    for (const s of sorted) if (!kept.some((k) => s.start < k.end && k.start < s.end)) kept.push(s);
+    return kept.sort((a, b) => a.start - b.start);
+  }
+
+  function detect(text, modelSpans = []) {
     const spans = [];
     for (const [cat, re, check] of RULES) {
       for (const m of text.matchAll(re)) {
         if (check && !check(m[0])) continue;
-        spans.push({ start: m.index, end: m.index + m[0].length, cat, verified: Boolean(check) });
+        spans.push({ start: m.index, end: m.index + m[0].length, cat, verified: Boolean(check), source: "rule" });
       }
     }
-    // Check-digit-verified matches win any overlap.
-    spans.sort((a, b) => (b.verified - a.verified) || (a.start - b.start));
-    const kept = [];
-    for (const s of spans) if (!kept.some((k) => s.start < k.end && k.start < s.end)) kept.push(s);
-    return kept.sort((a, b) => a.start - b.start);
+    for (const s of modelSpans) {
+      if (LABELS[s.cat]) spans.push({ start: s.start, end: s.end, cat: s.cat, verified: false, source: "model" });
+    }
+    return resolve(spans);
   }
 
   function mask(text, spans) {
@@ -48,10 +60,11 @@
     let cursor = 0;
     for (const s of spans) {
       const value = text.slice(s.start, s.end);
-      const key = `${s.cat}\u0000${value}`;
+      const label = LABELS[s.cat];
+      const key = `${label}\u0000${value}`;
       if (!seen.has(key)) {
-        counts[s.cat] = (counts[s.cat] || 0) + 1;
-        seen.set(key, `[${LABELS[s.cat]} ${counts[s.cat]}]`);
+        counts[label] = (counts[label] || 0) + 1;
+        seen.set(key, `[${label} ${counts[label]}]`);
       }
       out += text.slice(cursor, s.start) + seen.get(key);
       cursor = s.end;
