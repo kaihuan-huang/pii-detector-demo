@@ -98,6 +98,7 @@ footer{margin-top:56px;padding-top:16px;border-top:1px solid var(--line);font-si
   <section aria-labelledby="local">
     <h2 id="local">Run the model on this device</h2>
     <p>The same open model the full service uses, <a href="https://huggingface.co/openai/privacy-filter">openai/privacy-filter</a> (Apache-2.0), running in your browser on WebGPU. The weights download once from Hugging Face and are cached. Your text is never sent anywhere.</p>
+    <p>What is inside the model: <a href="model-architecture.html">architecture card</a>. 1.40B parameters in a 128-expert mixture-of-experts with 4 experts active per token, grouped-query attention (14 heads, 2 KV heads), a 128-token sliding window and 128K context; that is why it runs in a browser at all. Generated from the config alone, no weights downloaded.</p>
     <figure class="run">
       <video src="media/local-run.mp4" poster="media/local-run.jpg" controls muted playsinline preload="metadata" style="aspect-ratio:1280/744" aria-label="Screen recording of the model running in the browser with the Network panel open"></video>
       <figcaption>Desktop Chrome with the Network panel open. The requests are the one-time weight download (837 MB from Hugging Face). Detection then runs twice, in 485 ms and 444 ms, with 0 network requests; the only new entry is a local <code>blob:</code> script created inside the browser.</figcaption>
@@ -132,7 +133,7 @@ footer{margin-top:56px;padding-top:16px;border-top:1px solid var(--line);font-si
   </section>
 
   <footer>
-    <a href="https://kaihuan-huang.github.io/refund-agent-demo/">Refund Agent</a> · <a href="https://kaihuan-huang.github.io/booking-agent-demo/">Booking Agent Demo</a> · <a href="https://kaihuan-huang.github.io/ledger-demo/">Tamper-Evident Ledger</a> · <a href="https://github.com/kaihuan-huang">GitHub</a> · <a href="https://linkedin.com/in/kaihuanhuang/">LinkedIn</a>
+    <a href="https://kaihuan-huang.github.io/refund-agent-demo/">Refund Agent</a> · <a href="https://kaihuan-huang.github.io/booking-agent-demo/">Booking Agent Demo</a> · <a href="https://kaihuan-huang.github.io/ledger-demo/">Tamper-Evident Ledger</a> · <a href="https://kaihuan-huang.github.io/llm-arch-viz/">LLM Architecture Cards</a> · <a href="https://github.com/kaihuan-huang">GitHub</a> · <a href="https://linkedin.com/in/kaihuanhuang/">LinkedIn</a>
   </footer>
 </main>
 
